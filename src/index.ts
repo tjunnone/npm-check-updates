@@ -28,6 +28,21 @@ const { doctorHelpText } = constants
 const { print, printJson, printUpgrades, printIgnoredUpdates } = logging
 
 //
+// Global Error Handling
+//
+
+/**
+ * @typedef {Array} PkgInfo
+ * @property 0 pkgFile
+ * @property 1 pkgData
+ */
+
+// exit with non-zero error code when there is an unhandled promise rejection
+process.on('unhandledRejection', err => {
+  throw err
+})
+
+//
 // Helper functions
 //
 
@@ -216,21 +231,6 @@ async function runLocal(options: Options, pkgData?: Maybe<string>, pkgFile?: May
   return output
 }
 
-//
-// Program
-//
-
-/**
- * @typedef {Array} PkgInfo
- * @property 0 pkgFile
- * @property 1 pkgData
- */
-
-// exit with non-zero error code when there is an unhandled promise rejection
-process.on('unhandledRejection', err => {
-  throw err
-})
-
 /** Main entry point.
  *
  * @returns Promise<
@@ -302,7 +302,7 @@ export async function run(options: Options = {}): Promise<PackageFile | Index<Ve
     })
   }
 
-  /** Runs the denpendency upgrades. Loads the ncurc, finds the package file, and handles --deep. */
+  /** Runs the dependency upgrades. Loads the ncurc, finds the package file, and handles --deep. */
   async function runUpgrades(): Promise<Index<string> | PackageFile | void> {
     const defaultPackageFilename = getPackageFileName(options)
     const pkgs = globby.sync(options.cwd
@@ -383,3 +383,4 @@ export async function run(options: Options = {}): Promise<PackageFile | Index<Ve
 
 export { default as getNcuRc } from './lib/getNcuRc'
 export * from './versionmanager'
+export default run
