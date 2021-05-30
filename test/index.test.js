@@ -6,8 +6,8 @@ const rimraf = require('rimraf')
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
 const chaiString = require('chai-string')
-const ncu = require('../lib/')
-const { npm: spawnNpm } = require('../lib/package-managers/npm')
+const ncu = require('../src/')
+const spawnNpm = require('../src/package-managers/npm').default
 
 chai.use(chaiAsPromised)
 chai.use(chaiString)
@@ -20,11 +20,9 @@ describe('run', function () {
   function getTempFile() {
     return `test/temp_package${++last}.json`
   }
-  this.timeout(30000)
-
   it('return promised jsonUpgraded', () => {
     return ncu.run({
-      packageData: fs.readFileSync(path.join(__dirname, '/ncu/package.json'), 'utf-8')
+      packageData: fs.readFileSync(path.join(__dirname, 'ncu/package.json'), 'utf-8')
     }).should.eventually.have.property('express')
   })
 
@@ -56,7 +54,7 @@ describe('run', function () {
 
   it('only upgrade devDependencies and peerDependencies with --dep dev', () => {
     const upgraded = ncu.run({
-      packageData: fs.readFileSync(path.join(__dirname, '/ncu/package-dep.json'), 'utf-8'),
+      packageData: fs.readFileSync(path.join(__dirname, 'ncu/package-dep.json'), 'utf-8'),
       dep: 'dev'
     })
 
@@ -69,7 +67,7 @@ describe('run', function () {
 
   it('only upgrade devDependencies and peerDependencies with --dep dev,peer', () => {
     const upgraded = ncu.run({
-      packageData: fs.readFileSync(path.join(__dirname, '/ncu/package-dep.json'), 'utf-8'),
+      packageData: fs.readFileSync(path.join(__dirname, 'ncu/package-dep.json'), 'utf-8'),
       dep: 'dev,peer'
     })
 
@@ -265,85 +263,6 @@ describe('run', function () {
         })
       })
     ])
-  })
-
-  it('enable --enginesNode matching ', () => {
-    return ncu.run({
-      jsonAll: true,
-      packageData: JSON.stringify({
-        dependencies: {
-          del: '3.0.0'
-        },
-        engines: {
-          node: '>=6'
-        }
-      }),
-      enginesNode: true
-    }).then(data => {
-      return data.should.eql({
-        dependencies: {
-          del: '4.1.1'
-        },
-        engines: {
-          node: '>=6'
-        }
-      })
-    })
-  })
-
-  it('enable engines matching if --enginesNode', () => {
-    return ncu.run({
-      jsonAll: true,
-      packageData: JSON.stringify({
-        dependencies: {
-          del: '3.0.0'
-        },
-        engines: {
-          node: '>=6'
-        }
-      }),
-      enginesNode: true
-    }).then(upgradedPkg => {
-      upgradedPkg.should.have.property('dependencies')
-      upgradedPkg.dependencies.should.have.property('del')
-      upgradedPkg.dependencies.del.should.equal('4.1.1')
-    })
-  })
-
-  it('enable engines matching if --enginesNode, not update if matches not exists', () => {
-    return ncu.run({
-      jsonAll: true,
-      packageData: JSON.stringify({
-        dependencies: {
-          del: '3.0.0'
-        },
-        engines: {
-          node: '>=1'
-        }
-      }),
-      enginesNode: true
-    }).then(upgradedPkg => {
-      upgradedPkg.should.have.property('dependencies')
-      upgradedPkg.dependencies.should.have.property('del')
-      upgradedPkg.dependencies.del.should.equal('3.0.0')
-    })
-  })
-
-  it('enable engines matching if --enginesNode, update to latest version if engines.node not exists', () => {
-    return ncu.run({
-      jsonAll: true,
-      packageData: JSON.stringify({
-        dependencies: {
-          del: '3.0.0'
-        }
-      }),
-      enginesNode: true
-    }).then(upgradedPkg => {
-      upgradedPkg.should.have.property('dependencies')
-      upgradedPkg.dependencies.should.have.property('del')
-      upgradedPkg.dependencies.del.should.not.equal('3.0.0')
-      upgradedPkg.dependencies.del.should.not.equal('4.1.1')
-    })
   })
 
   describe('deprecated', () => {
@@ -636,125 +555,6 @@ describe('run', function () {
       upgraded.should.not.have.property('ncu-test-v2')
       upgraded.should.not.have.property('ncu-test-return-version')
       upgraded.should.have.property('fp-and-or')
-    })
-
-  })
-
-  describe('github urls', () => {
-
-    it('upgrade github https urls', async () => {
-      const upgrades = await ncu.run({
-        packageData: JSON.stringify({
-          dependencies: {
-            'ncu-test-v2': 'https://github.com/raineorshine/ncu-test-v2#1.0.0'
-          }
-        })
-      })
-      upgrades.should.deep.equal({
-        'ncu-test-v2': 'https://github.com/raineorshine/ncu-test-v2#2.0.0'
-      })
-    })
-
-    it('upgrade short github urls', async () => {
-      const upgrades = await ncu.run({
-        packageData: JSON.stringify({
-          dependencies: {
-            'ncu-test-v2': 'github:raineorshine/ncu-test-v2#1.0.0'
-          }
-        })
-      })
-      upgrades.should.deep.equal({
-        'ncu-test-v2': 'github:raineorshine/ncu-test-v2#2.0.0'
-      })
-    })
-
-    it('upgrade shortest github urls', async () => {
-      const upgrades = await ncu.run({
-        packageData: JSON.stringify({
-          dependencies: {
-            'ncu-test-v2': 'raineorshine/ncu-test-v2#1.0.0'
-          }
-        })
-      })
-      upgrades.should.deep.equal({
-        'ncu-test-v2': 'raineorshine/ncu-test-v2#2.0.0'
-      })
-    })
-
-    it('upgrade github http urls with semver', async () => {
-      const upgrades = await ncu.run({
-        packageData: JSON.stringify({
-          dependencies: {
-            'ncu-test-v2': 'https://github.com/raineorshine/ncu-test-v2#semver:^1.0.0'
-          }
-        })
-      })
-      upgrades.should.deep.equal({
-        'ncu-test-v2': 'https://github.com/raineorshine/ncu-test-v2#semver:^2.0.0'
-      })
-    })
-
-    // does not work in GitHub actions for some reason
-    it.skip('upgrade github git+ssh urls with semver', async () => {
-      const upgrades = await ncu.run({
-        packageData: JSON.stringify({
-          dependencies: {
-            'ncu-test-v2': 'git+ssh://git@github.com/raineorshine/ncu-test-v2.git#semver:^1.0.0'
-          }
-        })
-      })
-      upgrades.should.deep.equal({
-        'ncu-test-v2': 'git+ssh://git@github.com/raineorshine/ncu-test-v2.git#semver:^2.0.0'
-      })
-    })
-
-  })
-
-  describe('peer dependencies', () => {
-    const peerPath = path.join(__dirname, '/peer/')
-
-    it('peer dependencies of installed packages are ignored by default', async () => {
-      try {
-        await spawnNpm('install', {}, { cwd: peerPath })
-        const upgrades = await ncu.run({ cwd: peerPath })
-        upgrades.should.deep.equal({
-          'ncu-test-return-version': '2.0.0'
-        })
-      }
-      finally {
-        rimraf.sync(path.join(peerPath, 'node_modules'))
-        rimraf.sync(path.join(peerPath, 'package-lock.json'))
-      }
-    })
-
-    it('peer dependencies of installed packages are checked when using option peer', async () => {
-      try {
-        await spawnNpm('install', {}, { cwd: peerPath })
-        const upgrades = await ncu.run({ cwd: peerPath, peer: true })
-        upgrades.should.deep.equal({
-          'ncu-test-return-version': '1.1.0'
-        })
-      }
-      finally {
-        rimraf.sync(path.join(peerPath, 'node_modules'))
-        rimraf.sync(path.join(peerPath, 'package-lock.json'))
-      }
-    })
-
-    const peerUpdatePath = path.join(__dirname, '/peer-update/')
-    it('peer dependencies of installed packages are checked iteratively when using option peer', async () => {
-      try {
-        await spawnNpm('install', {}, { cwd: peerUpdatePath })
-        const upgrades = await ncu.run({ cwd: peerUpdatePath, peer: true })
-        upgrades.should.deep.equal({
-          'ncu-test-return-version': '1.1.0',
-          'ncu-test-peer-update': '1.1.0'
-        })
-      }
-      finally {
-        rimraf.sync(path.join(peerUpdatePath, 'node_modules'))
-        rimraf.sync(path.join(peerUpdatePath, 'package-lock.json'))
-      }
     })
 
   })

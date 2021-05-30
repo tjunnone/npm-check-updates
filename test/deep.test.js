@@ -4,18 +4,19 @@ const fs = require('fs')
 const path = require('path')
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
-const ncu = require('../lib/')
+const ncu = require('../src/')
 const spawn = require('spawn-please')
-const mergeOptions = require('../lib/merge-options')
+const mergeOptions = require('../src/lib/mergeOptions').default
 
 chai.should()
 chai.use(chaiAsPromised)
 
 process.env.NCU_TESTS = true
 
+const bin = path.join(__dirname, '../build/src/bin/cli.js')
+
 describe('--deep', function () {
 
-  const bin = path.join(__dirname, '../bin/cli.js')
   const cwd = path.join(__dirname, 'deep')
 
   this.timeout(60000)
@@ -120,7 +121,6 @@ describe('--deep', function () {
 
 describe('--deep with nested ncurc files', function () {
 
-  const bin = path.join(__dirname, '../bin/cli.js')
   const cwd = path.join(__dirname, 'deep-ncurc')
 
   this.timeout(60000)

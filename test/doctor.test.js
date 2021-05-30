@@ -7,13 +7,17 @@ const chaiAsPromised = require('chai-as-promised')
 const spawn = require('spawn-please')
 const rimraf = require('rimraf')
 const stripAnsi = require('strip-ansi')
-const { doctorHelpText } = require('../lib/constants.js')
+const { doctorHelpText } = require('../src/constants')
 
 chai.should()
 chai.use(chaiAsPromised)
+process.env.NCU_TESTS = 'true'
+
+const bin = path.join(__dirname, '../build/src/bin/cli.js')
+const doctorTests = path.join(__dirname, 'doctor')
 
 /** Run the ncu CLI. */
-const ncu = (args, options) => spawn('node', [path.join(__dirname, '../bin/cli.js'), ...args], options)
+const ncu = (args, options) => spawn('node', [bin, ...args], options)
 
 // tests that need to be run for npm and yarn
 
@@ -21,7 +25,7 @@ const testPass = ({ packageManager }) => {
 
   it('upgrade dependencies when tests pass', async function () {
 
-    const cwd = path.join(__dirname, 'doctor/pass')
+    const cwd = path.join(doctorTests, 'pass')
     const pkgPath = path.join(cwd, 'package.json')
     const nodeModulesPath = path.join(cwd, 'node_modules')
     const lockfilePath = path.join(cwd, packageManager === 'npm' ? 'package-lock.json' : 'yarn.lock')
@@ -62,6 +66,7 @@ const testPass = ({ packageManager }) => {
     }
 
     // stdout should include normal output
+    stderr.should.equal('')
     stripAnsi(stdout).should.include('Tests pass')
     stripAnsi(stdout).should.include('ncu-test-v2  ~1.0.0  →  ~2.0.0')
 
@@ -78,7 +83,7 @@ const testFail = ({ packageManager }) => {
 
   it('identify broken upgrade', async function() {
 
-    const cwd = path.join(__dirname, 'doctor/fail')
+    const cwd = path.join(doctorTests, 'fail')
     const pkgPath = path.join(cwd, 'package.json')
     const nodeModulesPath = path.join(cwd, 'node_modules')
     const lockfilePath = path.join(cwd, packageManager === 'npm' ? 'package-lock.json' : 'yarn.lock')
@@ -143,19 +148,19 @@ describe('doctor', function() {
   describe('npm', () => {
 
     it('print instructions when -u is not specified', async () => {
-      const cwd = path.join(__dirname, 'doctor/nopackagefile')
+      const cwd = path.join(doctorTests, 'nopackagefile')
       return ncu(['--doctor'], { cwd })
         .should.eventually.equal(doctorHelpText + '\n')
     })
 
     it('throw an error if there is no package file', async () => {
-      const cwd = path.join(__dirname, 'doctor/nopackagefile')
+      const cwd = path.join(doctorTests, 'nopackagefile')
       return ncu(['--doctor', '-u'], { cwd })
         .should.eventually.be.rejectedWith('Missing or invalid package.json')
     })
 
     it('throw an error if there is no test script', async () => {
-      const cwd = path.join(__dirname, 'doctor/notestscript')
+      const cwd = path.join(doctorTests, 'notestscript')
       return ncu(['--doctor', '-u'], { cwd })
         .should.eventually.be.rejectedWith('No npm "test" script')
     })
@@ -176,7 +181,7 @@ describe('doctor', function() {
 
     it('pass through options', async function () {
 
-      const cwd = path.join(__dirname, 'doctor/options')
+      const cwd = path.join(doctorTests, 'options')
       const pkgPath = path.join(cwd, 'package.json')
       const lockfilePath = path.join(cwd, 'package-lock.json')
       const nodeModulesPath = path.join(cwd, 'node_modules')
@@ -206,6 +211,7 @@ describe('doctor', function() {
       rimraf.sync(nodeModulesPath)
 
       // stdout should include normal output
+      stderr.should.equal('')
       stripAnsi(stdout).should.include('Tests pass')
       stripAnsi(stdout).should.include('ncu-test-v2  ~1.0.0  →  ~2.0.0')
 
